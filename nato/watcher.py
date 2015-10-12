@@ -17,10 +17,6 @@ import io, sys
 nodes_key = '/nodes'
 mappings_key = '/mappings'
 locks_key = '/locks'
-etcd_host = '127.0.0.1'
-etcd_port = 4001
-EXTERNAL_IP = '193.146.75.141'
-UPORTS_KEY='/uports'
 
 
 def _nodes_to_servers(r):
