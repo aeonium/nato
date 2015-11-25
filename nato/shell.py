@@ -20,41 +20,77 @@ import logging
 import logging.config
 import json
 import os
+import sys
 
-from .watcher import NatoWatcher
-from .managers import PortManager, ReverseProxyManager
+from oslo_config import cfg
 
-ETCD_HOST = str(os.getenv('ETCD_HOST', None))
-ETCD_PORT = int(os.getenv('ETCD_PORT', None))
-EXTERNAL_IP = str(os.getenv('EXTERNAL_IP', None))
+import nato
+from nato.utils import env
+from nato.watcher import NatoWatcher
+from nato.managers import PortManager, ReverseProxyManager
 
 
-def setup_logging(default_path='logging.json', default_level=logging.INFO,
-                  env_key='LOG_CFG'):
+opts = [
+    cfg.StrOpt('logging_conf',
+               default=env('LOG_CFG', 'logging.json'),
+               help='Logging configuration file (default value env[LOG_CFG]'
+                    'or logging.json)'),
+    cfg.BoolOpt('debug',
+                short='d',
+                default=False,
+                help='Print debug output (set logging level to '
+                     'DEBUG instead of default WARNING level).'),
+    cfg.StrOpt('external-ip',
+               required=True,
+               default=env('NATO_EXTERNAL_IP', None),
+               help='External IP of the bridge machine'),
+    cfg.StrOpt('etcd-host',
+               required=True,
+               default=env('ETCD_HOST', None),
+               help='etcd host'),
+    cfg.StrOpt('etcd-port',
+               required=True,
+               default=env('ETCD_PORT', None),
+               help='etcd host'),
+]
+
+CONF = cfg.CONF
+CONF.register_cli_opts(opts)
+CONF.register_opts(opts)
+
+
+def parse_args(argv, default_config_files=None):
+    CONF(argv[1:],
+         project='nato',
+         version=nato.__version__,
+         default_config_files=default_config_files)
+
+
+def setup_logging(config_file, debug=False):
     """
     Setup logging configuration
-
     """
-    path = default_path
-    value = os.getenv(env_key, None)
-    if value:
-        path = value
-    if os.path.exists(path):
-        with open(path, 'rt') as f:
+    log_level = logging.INFO
+    if debug:
+        log_level = logging.DEBUG
+    if os.path.exists(config_file):
+        with open(config_file, 'rt') as f:
             config = json.load(f)
         logging.config.dictConfig(config)
     else:
-        logging.basicConfig(level=default_level)
+        logging.basicConfig(level=log_level)
 
 
 def main():
-    setup_logging()
+    parse_args(sys.argv)
+    setup_logging(CONF.logging_conf, CONF.debug)
     LOG = logging.getLogger(__name__)
     LOG.info("NATO Starting")
-    managers = [PortManager(ETCD_HOST, ETCD_PORT, EXTERNAL_IP),
-                ReverseProxyManager('http://' + EXTERNAL_IP)]
-    watcher = NatoWatcher(ETCD_HOST, ETCD_PORT, managers)
+    managers = [PortManager(CONF.etcd_host, CONF.etcd_port, CONF.external_ip),
+                ReverseProxyManager('http://' + CONF.external_ip)]
+    watcher = NatoWatcher(CONF.etcd_host, CONF.etcd_port, managers)
     watcher.watch()
+
 
 if __name__ == '__main__':
     main()

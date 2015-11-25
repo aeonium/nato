@@ -16,22 +16,29 @@
 
 import logging
 import os
+import sys
 
 import etcd
-
+from oslo_config import cfg
 
 LOG = logging.getLogger(__name__)
 
+opts = [
+    cfg.StrOpt('nodes-key',
+               default='/nodes',
+               help='Etcd key to find nodes'),
+    cfg.StrOpt('mappings-key',
+               default='/mappings',
+               help='Etcd key to define mappings'),
+    cfg.StrOpt('locks-key',
+               default='/locks',
+               help='Etcd key to crreate locks'),
+]
 
-import subprocess
-import ast
-import io, sys
+CONF = cfg.CONF
+CONF.register_opts(opts, group="watcher")
+CONF.register_cli_opts(opts, group="watcher")
 
-# Hardcoded config
-nodes_key = '/nodes'
-mappings_key = '/mappings'
-locks_key = '/locks'
-SSH_HOST_PATH='/ssh_hosts'
 
 def _nodes_to_servers(r):
     s = {}
@@ -66,7 +73,7 @@ class NatoWatcher:
     def _get_nodes(self):
         nodes = {}
         try:
-            nodes = _nodes_to_servers(self.client.read(nodes_key,
+            nodes = _nodes_to_servers(self.client.read(CONF.nodes_key,
                                                        recursive=True))
         except etcd.EtcdKeyNotFound:
             pass
@@ -75,7 +82,7 @@ class NatoWatcher:
     def _get_mappings(self):
         nodes = {}
         try:
-            nodes = _mappings_to_servers(self.client.read(mappings_key,
+            nodes = _mappings_to_servers(self.client.read(CONF.mappings_key,
                                                           recursive=True))
         except etcd.EtcdKeyNotFound:
             pass
@@ -83,14 +90,15 @@ class NatoWatcher:
 
     def remove_mapping(self, uuid, mapping):
         try:
-            self.client.read(mappings_key + '/' + uuid)
+            self.client.read(CONF.mappings_key + '/' + uuid)
         except etcd.EtcdKeyNotFound:
             return
             pass
         # XXX TODO move this to a with thinggy
         try:
             # 60 seconds TTL should be enough for anyone to get this done
-            self.client.write(locks_key + '/' + uuid, 'lock', ttl=60, prevExist=False)
+            self.client.write(CONF.locks_key + '/' + uuid, 'lock', ttl=60,
+                              prevExist=False)
         except etcd.EtcdAlreadyExist:
             # do not mess with locked uuid
             return
@@ -99,15 +107,15 @@ class NatoWatcher:
             for m in self.managers:
                 m.remove_node(mapping)
                 LOG.info("[OFFLINE] %s" % uuid)
-            self.client.delete(mappings_key + '/' + uuid, recursive=True)
-            self.client.delete(locks_key + '/' + uuid)
+            self.client.delete(CONF.mappings_key + '/' + uuid, recursive=True)
+            self.client.delete(CONF.locks_key + '/' + uuid)
         except etcd.EtcdKeyNotFound:
             pass
 
     def add_mapping(self, uuid, node):
         LOG.debug("Trying to add new mapping to server %s" % uuid)
         try:
-            self.client.read(mappings_key + '/' + uuid)
+            self.client.read(CONF.mappings_key + '/' + uuid)
             # someone did the mapping already, go away
             LOG.info("Existing mapping, nothing to do")
             return
@@ -115,8 +123,9 @@ class NatoWatcher:
             pass
         try:
             # 60 seconds TTL should be enough to get this done
-            self.client.write(locks_key + '/' + uuid, 'lock', ttl=60, prevExist=False)
-            base_key = '/'.join([mappings_key, uuid])
+            self.client.write(CONF.locks_key + '/' + uuid, 'lock', ttl=60,
+                              prevExist=False)
+            base_key = '/'.join([CONF.mappings_key, uuid])
             for m in self.managers:
                 map_info = m.add_node(node)
                 LOG.info("[ONLINE] %s %s" % (uuid, map_info))
@@ -127,17 +136,13 @@ class NatoWatcher:
             LOG.debug("Existing lock, do not mess")
             return
         else:
-            self.client.delete(locks_key + '/' + uuid)
+            self.client.delete(CONF.locks_key + '/' + uuid)
 
 
     def watch(self):
         self.client = etcd.Client(host=self.host, port=self.port,
                                   allow_reconnect=True)
         
-        filelist = [ f for f in os.listdir(SSH_HOST_PATH)]
-        for f in filelist:
-            os.remove(os.path.join(SSH_HOST_PATH,f))
-
         while True:
             try:
                 mapped = self._get_mappings()
@@ -160,7 +165,7 @@ class NatoWatcher:
                 LOG.debug("no change")
 
             try:
-                self.client.read(nodes_key, recursive=True, wait=True)
+                self.client.read(CONF.nodes_key, recursive=True, wait=True)
             except etcd.EtcdException:
                 # we cannot distinguish a timeout from anything else so just
                 # fail if we need to in the read above

@@ -14,6 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with Lifewatch DAAP. If not, see <http://www.gnu.org/licenses/>.
 
-import pbr.version
+import os
 
-__version__ = pbr.version.VersionInfo('nato').version_string()
+def env(var, default=''):
+    value = os.environ.get(var)
+    if value:
+        return value
+    return default 
