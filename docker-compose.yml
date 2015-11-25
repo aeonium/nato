@@ -12,7 +12,6 @@ nato:
         - /ssh_hosts:/ssh_hosts
     volumes_from:
         - nginx
-    privileged: true
 
 etcd:
     image: quay.io/coreos/etcd
