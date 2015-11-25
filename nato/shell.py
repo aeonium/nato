@@ -42,7 +42,7 @@ opts = [
                      'DEBUG instead of default WARNING level).'),
     cfg.StrOpt('external-ip',
                required=True,
-               default=env('NATO_EXTERNAL_IP', None),
+               default=env('EXTERNAL_IP', None),
                help='External IP of the bridge machine'),
     cfg.StrOpt('etcd-host',
                required=True,
