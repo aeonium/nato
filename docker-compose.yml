@@ -18,11 +18,11 @@ etcd:
     environment:
         - ETCD_NAME=etcd
         - ETCD_DATA_DIR=/data
-        - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:4001
-        - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:4001
+        - ETCD_ADVERTISE_CLIENT_URLS=http://localhost:4001
+        - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://localhost:4001
         - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:7001
         - ETCD_INITIAL_CLUSTER_TOKEN=etcd_nato
-        - ETCD_INITIAL_CLUSTER=etcd=http://etcd:7001
+        - ETCD_INITIAL_CLUSTER=etcd=http://localhost:7001
         - ETCD_INITIAL_CLUSTER_STATE=new
         - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:4001
     volumes:
