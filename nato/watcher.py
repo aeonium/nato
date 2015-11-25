@@ -17,7 +17,7 @@ import io, sys
 nodes_key = '/nodes'
 mappings_key = '/mappings'
 locks_key = '/locks'
-
+SSH_HOST_PATH='/ssh_hosts'
 
 def _nodes_to_servers(r):
     s = {}
@@ -119,6 +119,10 @@ class NatoWatcher:
     def watch(self):
         self.client = etcd.Client(host=self.host, port=self.port,
                                   allow_reconnect=True)
+        
+        filelist = [ f for f in os.listdir(SSH_HOST_PATH)]
+        for f in filelist:
+            os.remove(os.path.join(SSH_HOST_PATH,f))
 
         while True:
             try:

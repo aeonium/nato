@@ -14,7 +14,7 @@ LOG = logging.getLogger(__name__)
 UPORTS_KEY='/uports'
 MIN_PORT=20000
 MAX_PORT=25000
-
+SSH_HOST_PATH='/ssh_hosts'
 
 class PortManager:
     """Manages firewall."""
@@ -22,10 +22,11 @@ class PortManager:
         self.client = etcd.Client(host=host, port=port,
                        allow_reconnect=True)
         self.external_ip = external_ip
+        self._uports = []
         try:
             self._uports = ast.literal_eval(self.client.read(UPORTS_KEY).value)
         except:
-            self._uports = []
+            pass
 
     def str(self):
         return str(self._uports)
@@ -38,7 +39,6 @@ class PortManager:
         unused = list(set(range(MIN_PORT, top)) - set(self._uports))
         if unused:
             return min(unused)
-
         if top != MAX_PORT:
             return top + 1;
         else:
@@ -60,20 +60,25 @@ class PortManager:
         # XXX possible race condition?
         port = self.unused_port()
         self.append(port)
-        d = {'port': port, 'ip': node['ip']}
+        d = {'port': port, 'node_ip': node['ip']}
+        open(os.path.join(SSH_HOST_PATH, '%(node_ip)s_%(port)s' % d), 'w').close()        
         # FIXME: 22 hardcoded there
-        cmd = ('iptables -t nat -A PREROUTING -i eth0 -p tcp '
-               '--dport %(port)s -j DNAT --to %(ip)s:22') % d
+        #cmd = ('iptables -t nat -A PREROUTING -i eth0 -p tcp '
+        #       '--dport %(port)s -j DNAT --to %(ip)s:22') % d
         # TODO: error handling
-        LOG.debug("Adding rule to firewall: %s" % cmd)
-        subprocess.call(cmd, shell=True)
+        #LOG.debug("Adding rule to firewall: %s" % cmd)
+        #subprocess.call(cmd, shell=True)
         return {'port': port, 'node_ip': node['ip'], 'ip': self.external_ip}
 
     def remove_node(self, mapping):
+        ssh_host_file = os.path.join(SSH_HOST_PATH, '%(node_ip)s_%(port)s' % mapping)
+        if os.path.exists(ssh_host_file):
+            os.remove(ssh_host_file)
+        
         # FIXME: 22 hardcoded there
-        cmd = ('iptables -t nat -D PREROUTING -i eth0 -p tcp '
-               '--dport %(port)s -j DNAT --to %(node_ip)s:22') % mapping
+        #cmd = ('iptables -t nat -D PREROUTING -i eth0 -p tcp '
+        #       '--dport %(port)s -j DNAT --to %(node_ip)s:22') % mapping
         # TODO: error handling
-        LOG.debug("Removing rule from firewall: %s" % cmd)
-        subprocess.call(cmd, shell=True)
+        #LOG.debug("Removing rule from firewall: %s" % cmd)
+        #subprocess.call(cmd, shell=True)
         self.remove(int(mapping['port']))

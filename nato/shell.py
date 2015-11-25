@@ -10,10 +10,9 @@ import os
 from .watcher import NatoWatcher
 from .managers import PortManager, ReverseProxyManager
 
-# XXX HARDCODED CONFIG
-ETCD_HOST = '127.0.0.1'
-ETCD_PORT = 4001
-EXTERNAL_IP = '193.146.75.165'
+ETCD_HOST = str(os.getenv('ETCD_HOST', None))
+ETCD_PORT = int(os.getenv('ETCD_PORT', None))
+EXTERNAL_IP = str(os.getenv('EXTERNAL_IP', None))
 
 
 def setup_logging(default_path='logging.json', default_level=logging.INFO,

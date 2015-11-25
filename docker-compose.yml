@@ -1,0 +1,40 @@
+nato:
+    build: .
+    restart: always
+    dockerfile: Dockerfile.nato
+    environment:
+        - ETCD_HOST=etcd
+        - ETCD_PORT=4001
+        - EXTERNAL_IP=193.146.75.165
+    links:
+        - etcd:etcd
+    volumes:
+        - /ssh_hosts:/ssh_hosts
+    volumes_from:
+        - nginx
+    privileged: true
+
+etcd:
+    image: quay.io/coreos/etcd
+    environment:
+        - ETCD_NAME=etcd
+        - ETCD_DATA_DIR=/data
+        - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:4001
+        - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:4001
+        - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:7001
+        - ETCD_INITIAL_CLUSTER_TOKEN=etcd_nato
+        - ETCD_INITIAL_CLUSTER=etcd=http://etcd:7001
+        - ETCD_INITIAL_CLUSTER_STATE=new
+        - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:4001
+    volumes:
+        - /var/etcd:/data
+    ports:
+        - "4001:4001"
+        - "7001:7001"
+
+nginx:
+    build: .
+    dockerfile: Dockerfile.nginx
+    ports:
+        - "80:80"
+        - "443:443"

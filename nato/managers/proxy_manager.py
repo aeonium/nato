@@ -17,11 +17,13 @@ class ReverseProxyManager:
         with open(os.path.join(JUPYTER_SERVER_PATH, node['uuid']), 'w') as f:
             subs = {'SERVER_ID': node['uuid'], 'SERVER_IP': node['ip']}
             f.write(tpl % subs)
-        subprocess.call('service nginx reload', shell=True)
+            f.close()
+        server_file = os.path.join(JUPYTER_SERVER_PATH, node['uuid'])
+        #subprocess.call('service nginx reload', shell=True)
         return {'http': urljoin(self.url_base, node['uuid'])}
 
     def remove_node(self, mapping):
         server_file = os.path.join(JUPYTER_SERVER_PATH, mapping['uuid'])
         if os.path.exists(server_file):
             os.remove(os.path.join(JUPYTER_SERVER_PATH, mapping['uuid']))
-            subprocess.call('service nginx reload', shell=True)
+            #subprocess.call('service nginx reload', shell=True)
