@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-echo "Enabling ip forwarding..."
 WAN_IFACE=eth0
-sysctl -w net.ipv4.ip_forward=1 
+
+echo "Enabling ip forwarding..."
+echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf
+sysctl -p /etc/sysctl.conf
 
 echo "Setting Rules in iptables..."
-iptables -t nat -APOSTROUTING -d 172.16.27.0/24 -p tcp -m tcp --dport 22 -j MASQUERADE
+iptables -t nat -A POSTROUTING -d 172.16.27.0/24 -p tcp -m tcp --dport 22 -j MASQUERADE
 iptables -t nat -F SSH
 iptables -t nat -N SSH
 iptables -t nat -A PREROUTING -j SSH
