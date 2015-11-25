@@ -4,10 +4,7 @@ MAINTAINER aeonium <info@aeonium.eu>
 RUN apt-get update \
     && apt-get -qy upgrade --fix-missing --no-install-recommends \
     && apt-get -qy install --fix-missing --no-install-recommends \
-        gcc \
         git \
-        iptables \
-        
     && apt-get clean autoclean \
     && apt-get autoremove -y \
     && rm -rf /var/lib/{apt,dpkg}/ \
@@ -15,18 +12,9 @@ RUN apt-get update \
     && (find /usr/share/doc -empty -delete || true) \
     && rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/* 
 
-COPY requirements.txt /code/
-COPY README.md /code/
-COPY setup.cfg /code/
-COPY setup.py /code/
-COPY logging.json /code/
-COPY misc /code/misc/
-COPY nato /code/nato/
-
+COPY . /code/
 WORKDIR /code/
-RUN git init \
-    && pip install -U -r requirements.txt --exists-action i \
-    && pip install -e . 
+RUN pip install .
 
 CMD ["nato"]
 
