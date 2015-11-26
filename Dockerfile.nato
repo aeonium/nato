@@ -10,10 +10,13 @@ RUN apt-get update \
     && rm -rf /var/lib/{apt,dpkg}/ \
     && (find /usr/share/doc -depth -type f ! -name copyright -delete || true) \
     && (find /usr/share/doc -empty -delete || true) \
-    && rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/* 
+    && rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/*
 
-COPY . /code/
+COPY requirements.txt /code/
 WORKDIR /code/
+RUN pip install -r requirements.txt
+
+COPY . /code
 RUN pip install .
 
 CMD ["nato"]

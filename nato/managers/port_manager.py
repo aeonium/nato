@@ -50,17 +50,18 @@ class PortManager:
     """Manages firewall."""
     def __init__(self, host, port, external_ip):
         # cleans up any previous mapping
-        filelist = [f for f in os.listdir(CONF.map_path)]
+        filelist = [f for f in os.listdir(CONF.portmanager.map_path)]
         for f in filelist:
-            os.remove(os.path.join(CONF.map_path,f))
+            os.remove(os.path.join(CONF.portmanager.map_path, f))
 
         self.client = etcd.Client(host=host, port=port,
-                       allow_reconnect=True)
+                                  allow_reconnect=False)
+
         self.external_ip = external_ip
         self._uports = []
         try:
             self._uports = ast.literal_eval(
-                self.client.read(CONF.uports_key).value)
+                self.client.read(CONF.portmanager.uports_key).value)
         except:
             pass
 
@@ -69,24 +70,25 @@ class PortManager:
 
     def unused_port(self):
         if not self._uports:
-            return CONF.min_port
+            return CONF.portmanager.min_port
         top = max(self._uports)
-        unused = list(set(range(CONF.min_port, top)) - set(self._uports))
+        unused = list(set(range(CONF.portmanager.min_port, top)) -
+                      set(self._uports))
         if unused:
             return min(unused)
-        if top != CONF.max_port:
-            return top + 1;
+        if top != CONF.portmanager.max_port:
+            return top + 1
         else:
             return None
 
     def append(self, port):
         self._uports.append(port)
-        self.client.write(CONF.uports_key, self._uports)
+        self.client.write(CONF.portmanager.uports_key, self._uports)
 
     def remove(self, port):
         try:
             self._uports.remove(port)
-            self.client.write(CONF.uports_key, self._uports)
+            self.client.write(CONF.portmanager.uports_key, self._uports)
         except ValueError:
             # XXX ay!
             pass
@@ -96,12 +98,12 @@ class PortManager:
         port = self.unused_port()
         self.append(port)
         d = {'port': port, 'node_ip': node['ip']}
-        open(os.path.join(CONF.map_path,
+        open(os.path.join(CONF.portmanager.map_path,
                           '%(node_ip)s_%(port)s' % d), 'w').close()
         return {'port': port, 'node_ip': node['ip'], 'ip': self.external_ip}
 
     def remove_node(self, mapping):
-        ssh_host_file = os.path.join(CONF.map_path,
+        ssh_host_file = os.path.join(CONF.portmanager.map_path,
                                      '%(node_ip)s_%(port)s' % mapping)
         if os.path.exists(ssh_host_file):
             os.remove(ssh_host_file)

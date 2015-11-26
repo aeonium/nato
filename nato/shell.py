@@ -31,10 +31,9 @@ from nato.managers import PortManager, ReverseProxyManager
 
 
 opts = [
-    cfg.StrOpt('logging_conf',
-               default=env('LOG_CFG', 'logging.json'),
-               help='Logging configuration file (default value env[LOG_CFG]'
-                    'or logging.json)'),
+    cfg.StrOpt('logging-conf',
+               default='',
+               help='Logging configuration file (json file)'),
     cfg.BoolOpt('debug',
                 short='d',
                 default=False,
@@ -48,7 +47,7 @@ opts = [
                required=True,
                default=env('ETCD_HOST', None),
                help='etcd host'),
-    cfg.StrOpt('etcd-port',
+    cfg.IntOpt('etcd-port',
                required=True,
                default=env('ETCD_PORT', None),
                help='etcd host'),
@@ -78,7 +77,8 @@ def setup_logging(config_file, debug=False):
             config = json.load(f)
         logging.config.dictConfig(config)
     else:
-        logging.basicConfig(level=log_level)
+        logging.basicConfig()
+        logging.getLogger('nato').setLevel(log_level)
 
 
 def main():

@@ -73,7 +73,7 @@ class NatoWatcher:
     def _get_nodes(self):
         nodes = {}
         try:
-            nodes = _nodes_to_servers(self.client.read(CONF.nodes_key,
+            nodes = _nodes_to_servers(self.client.read(CONF.watcher.nodes_key,
                                                        recursive=True))
         except etcd.EtcdKeyNotFound:
             pass
@@ -82,23 +82,23 @@ class NatoWatcher:
     def _get_mappings(self):
         nodes = {}
         try:
-            nodes = _mappings_to_servers(self.client.read(CONF.mappings_key,
-                                                          recursive=True))
+            nodes = _mappings_to_servers(
+                self.client.read(CONF.watcher.mappings_key, recursive=True))
         except etcd.EtcdKeyNotFound:
             pass
         return nodes
 
     def remove_mapping(self, uuid, mapping):
         try:
-            self.client.read(CONF.mappings_key + '/' + uuid)
+            self.client.read(CONF.watcher.mappings_key + '/' + uuid)
         except etcd.EtcdKeyNotFound:
             return
             pass
         # XXX TODO move this to a with thinggy
         try:
             # 60 seconds TTL should be enough for anyone to get this done
-            self.client.write(CONF.locks_key + '/' + uuid, 'lock', ttl=60,
-                              prevExist=False)
+            self.client.write(CONF.watcher.locks_key + '/' + uuid, 'lock',
+                              ttl=60, prevExist=False)
         except etcd.EtcdAlreadyExist:
             # do not mess with locked uuid
             return
@@ -107,15 +107,16 @@ class NatoWatcher:
             for m in self.managers:
                 m.remove_node(mapping)
                 LOG.info("[OFFLINE] %s" % uuid)
-            self.client.delete(CONF.mappings_key + '/' + uuid, recursive=True)
-            self.client.delete(CONF.locks_key + '/' + uuid)
+            self.client.delete(CONF.watcher.mappings_key + '/' + uuid,
+                               recursive=True)
+            self.client.delete(CONF.watcher.locks_key + '/' + uuid)
         except etcd.EtcdKeyNotFound:
             pass
 
     def add_mapping(self, uuid, node):
         LOG.debug("Trying to add new mapping to server %s" % uuid)
         try:
-            self.client.read(CONF.mappings_key + '/' + uuid)
+            self.client.read(CONF.watcher.mappings_key + '/' + uuid)
             # someone did the mapping already, go away
             LOG.info("Existing mapping, nothing to do")
             return
@@ -123,9 +124,9 @@ class NatoWatcher:
             pass
         try:
             # 60 seconds TTL should be enough to get this done
-            self.client.write(CONF.locks_key + '/' + uuid, 'lock', ttl=60,
-                              prevExist=False)
-            base_key = '/'.join([CONF.mappings_key, uuid])
+            self.client.write(CONF.watcher.locks_key + '/' + uuid, 'lock',
+                              ttl=60, prevExist=False)
+            base_key = '/'.join([CONF.watcher.mappings_key, uuid])
             for m in self.managers:
                 map_info = m.add_node(node)
                 LOG.info("[ONLINE] %s %s" % (uuid, map_info))
@@ -136,13 +137,12 @@ class NatoWatcher:
             LOG.debug("Existing lock, do not mess")
             return
         else:
-            self.client.delete(CONF.locks_key + '/' + uuid)
-
+            self.client.delete(CONF.watcher.locks_key + '/' + uuid)
 
     def watch(self):
         self.client = etcd.Client(host=self.host, port=self.port,
-                                  allow_reconnect=True)
-        
+                                  allow_reconnect=False)
+
         while True:
             try:
                 mapped = self._get_mappings()
@@ -165,7 +165,8 @@ class NatoWatcher:
                 LOG.debug("no change")
 
             try:
-                self.client.read(CONF.nodes_key, recursive=True, wait=True)
+                self.client.read(CONF.watcher.nodes_key, recursive=True,
+                                 wait=True)
             except etcd.EtcdException:
                 # we cannot distinguish a timeout from anything else so just
                 # fail if we need to in the read above

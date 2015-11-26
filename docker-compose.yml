@@ -5,7 +5,8 @@ nato:
     environment:
         - ETCD_HOST=etcd
         - ETCD_PORT=4001
-        - EXTERNAL_IP=193.146.75.165
+        # Set here the public IP (or hostname) of the host
+        - EXTERNAL_IP=localhost
     links:
         - etcd:etcd
     volumes:
@@ -16,14 +17,15 @@ nato:
 etcd:
     image: quay.io/coreos/etcd
     environment:
-        - ETCD_NAME=etcd
+        - ETCD_NAME=natoetcd
         - ETCD_DATA_DIR=/data
-        - ETCD_ADVERTISE_CLIENT_URLS=http://localhost:4001
-        - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://localhost:4001
-        - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:7001
-        - ETCD_INITIAL_CLUSTER_TOKEN=etcd_nato
-        - ETCD_INITIAL_CLUSTER=etcd=http://localhost:7001
         - ETCD_INITIAL_CLUSTER_STATE=new
+        # Use in the following three variables the (private) IP of this host
+        - ETCD_ADVERTISE_CLIENT_URLS=http://localhost:4001
+        - ETCD_INITIAL_CLUSTER=natoetcd=http://localhost:4001
+        - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://localhost:4001
+        - ETCD_INITIAL_CLUSTER_TOKEN=8ea70dbac4494de1902d5e282e1db85f
+        - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:7001
         - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:4001
     volumes:
         - /var/etcd:/data

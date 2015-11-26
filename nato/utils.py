@@ -16,8 +16,9 @@
 
 import os
 
+
 def env(var, default=''):
     value = os.environ.get(var)
     if value:
         return value
-    return default 
+    return default
